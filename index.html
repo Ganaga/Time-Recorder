@@ -107,13 +107,17 @@
             }
             getToday() {
                 const result = {};
+                let notEnded;
                 this.tasks.forEach(task => {
                     const duration = (task.end ? task.end : Date.now()) - task.start;
                     if (result[task.name]) result[task.name] += duration;
                     else result[task.name] = duration;
+                    if(!task.end) notEnded = task.name;
                 });
+                if(notEnded) document.title = notEnded + ' ' + getYoutubeLikeToDisplay(result[notEnded]);
                 return result;
             }
+            
             drawTable() {
                 let html = '';
                 const data = this.getToday();
