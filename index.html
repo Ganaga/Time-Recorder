@@ -53,6 +53,14 @@
                     Stop
                 </button>
             </div>
+            <div class="col-sm">
+                <span id="currentTaskInfo"></span>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-sm">
+                <span id="error"></span>
+            </div>
         </div>
         <div class="row">
             <div class="col-sm">
@@ -79,7 +87,15 @@
                 const tasksJson = window.localStorage.getItem('tasks');
                 if (tasksJson) this.tasks = JSON.parse(tasksJson);
                 else this.tasks = [];
+
+                const currentTaskJson = window.localStorage.getItem('currentTask');
+                if (currentTaskJson) {
+                    this.currentTask = JSON.parse(currentTaskJson);
+                    $('.autocomplete').val(this.currentTask.name);
+                }
+                
                 this.intervalId = -1;
+                this.setState();
                 this.drawTable();
             }
 
@@ -92,42 +108,103 @@
             }
 
             start(name) {
-                this.tasks.unshift({
+                if(!name || name.trim().length == 0) {
+                    $('#error').html('Field is empty');
+                    return;
+                }
+                $('#error').html('');
+                if(this.currentTask) this.stop();
+                this.currentTask = {
                     start: Date.now(),
                     end: undefined,
                     name: name
-                });
-                this.intervalId = setInterval(() => this.drawTable(), 1000);
+                }
+                this.intervalId = setInterval(() => this.displayCurrentTask(), 1000);
                 this.save();
+                this.drawTable();
+                this.setState();
             }
             stop() {
-                this.tasks[0].end = Date.now();
+                if(this.currentTask) {
+                    this.currentTask.end = Date.now();
+                    this.tasks.unshift(this.currentTask);
+                    this.currentTask = undefined;
+                }
                 clearInterval(this.intervalId);
                 this.save();
+                this.drawTable();
+                this.setState();
             }
-            getToday() {
-                const result = {};
-                let notEnded;
+            setState() {
+                if(this.currentTask) {
+                    $('#startBtn').hide();
+                    $('#stopBtn').show();
+                } else {
+                    if($('.autoComplete').val().length>2) {
+                         $('#startBtn').removeClass('disabled');
+                    } else $('#startBtn').addClass('disabled');
+                    $('#startBtn').show();
+                    $('#stopBtn').hide();
+                }
+            }
+            getTotalDurations() {
+                const result = [];
+                const cache = {};
                 this.tasks.forEach(task => {
-                    const duration = (task.end ? task.end : Date.now()) - task.start;
-                    if (result[task.name]) result[task.name] += duration;
-                    else result[task.name] = duration;
-                    if(!task.end) notEnded = task.name;
+                    if(task.name == '') return;
+                    let aggrTask = cache[task.name+task.day];
+                    if(!aggrTask) {
+                        cache[task.name+task.day] = task;
+                        result.push(task);
+                        aggrTask = task;
+                        aggrTask.duration = 0;
+                        aggrTask.day = new Date(aggrTask.start).toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+                    }
+                    aggrTask.duration += (task.end ? task.end : Date.now()) - task.start;
                 });
-                if(notEnded) document.title = notEnded + ' ' + getYoutubeLikeToDisplay(result[notEnded]);
+                
                 return result;
             }
-            
+            displayCurrentTask() {
+                if(this.currentTask) 
+                {
+                    const duration = getYoutubeLikeToDisplay(Date.now()-this.currentTask.start); 
+                    const msg =  duration + ' ' + this.currentTask.name;
+                    document.title = msg;
+                    $('#currentTaskInfo').html(duration);
+                }
+            }
             drawTable() {
                 let html = '';
-                const data = this.getToday();
-                for (var i in data) {
-                    html += `<tr><td>${i}</td><td>${getYoutubeLikeToDisplay(data[i])}</td></tr>`;
-                }
+                this.getTotalDurations().forEach(task => {
+                    html += `<tr>
+                        <td>${task.day}</td>
+                        <td>${task.name}</td>
+                        <td>${getYoutubeLikeToDisplay(task.duration)}</td>
+                        <td>
+                            <button onClick="tm.delete('${task.name}', '${task.day}')" type="button" class="btn btn-secondary">
+                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash" viewBox="0 0 16 16">
+                              <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"></path>
+                              <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"></path>
+                              </svg>
+                            </button>
+                        </td>
+                    </tr>`;
+                });
                 $('#tableBody').html(html);
+            }
+            delete(name, day) {
+                const newTasks = [];
+                this.tasks.forEach(task => {
+                    if(task.name !== name || task.day !== day) newTasks.push(task);
+                });
+                this.tasks = newTasks;
+                this.save();
+                this.drawTable();
             }
             save() {
                 window.localStorage.setItem('tasks', JSON.stringify(this.tasks));
+                window.localStorage.setItem('currenttask', JSON.stringify(this.currentTask));
             }
         };
 
@@ -144,20 +221,12 @@
         });
 
         $('.autoComplete').keypress(evt => {
-            if ($('.autoComplete').val().length > 2) $('#startBtn').removeClass('disabled');
-            else $('#startBtn').addClass('disabled');
-            if($('#stopBtn').is(':visible')) {
-                tm.stop();
-                $('#startBtn').show();
-                $('#stopBtn').hide();
-            }
+            tm.setState();
         });
 
         $('#startBtn').click(event => {
             const task = $('.autoComplete').val();
             tm.start(task);
-            $('#startBtn').hide();
-            $('#stopBtn').show();
         });
 
         $('#stopBtn').click(event => {
