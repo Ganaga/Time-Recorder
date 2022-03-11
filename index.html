@@ -24,7 +24,6 @@
 </head>
 
 <body>
-
     <div class="container" style="margin-top: 50px; margin-bottom: 50px;">
         <div class="row">
             <div class="col-sm" style="margin-bottom: 30px;">
@@ -54,12 +53,8 @@
                 </button>
             </div>
             <div class="col-sm">
+                <span id="error" style="color: red;font-weight: 600;"></span>
                 <span id="currentTaskInfo"></span>
-            </div>
-        </div>
-        <div class="row">
-            <div class="col-sm">
-                <span id="error"></span>
             </div>
         </div>
         <div class="row">
@@ -67,8 +62,9 @@
                 <table class="table">
                     <thead>
                         <tr>
+                            <th scope="col">Day</th>
                             <th scope="col">Task</th>
-                            <th scope="col">Time</th>
+                            <th scope="col">Duration</th>
                         </tr>
                     </thead>
                     <tbody id="tableBody"></tbody>
@@ -76,7 +72,6 @@
             </div>
         </div>
     </div>
-
 
     <script>
 
@@ -109,7 +104,8 @@
 
             start(name) {
                 if(!name || name.trim().length == 0) {
-                    $('#error').html('Field is empty');
+                    $('#error').html("You haven't specify what you are doing!");
+                    setTimeout(()=>$('#error').html(""),2000);
                     return;
                 }
                 $('#error').html('');
@@ -176,9 +172,11 @@
             }
             drawTable() {
                 let html = '';
+                let currentDay = '';
                 this.getTotalDurations().forEach(task => {
+                    
                     html += `<tr>
-                        <td>${task.day}</td>
+                        <td><b>${task.day!=currentDay?task.day:''}</b></td>
                         <td>${task.name}</td>
                         <td>${getYoutubeLikeToDisplay(task.duration)}</td>
                         <td>
@@ -190,6 +188,7 @@
                             </button>
                         </td>
                     </tr>`;
+                    currentDay = task.day;
                 });
                 $('#tableBody').html(html);
             }
@@ -209,7 +208,8 @@
         };
 
         const tm = new TaskManager();
-
+        $('.toast').toast({delay: 2000});
+        
         // register the events
         $('.autoComplete').autoComplete({
             resolver: 'custom',
