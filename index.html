@@ -30,7 +30,7 @@
                 <input placeholder="What are you doing?" class="form-control autoComplete" type="text" autocomplete="off">
             </div>
             <div class="col-sm">
-                <button type="button" id="startBtn" class="btn btn-primary disabled">
+                <button type="button" id="startBtn" class="btn btn-success disabled">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
                         class="bi bi-play-btn" viewBox="0 0 16 16">
                         <path d="M6.79 5.093A.5.5 0 0 0 6 5.5v5a.5.5 0 0 0 .79.407l3.5-2.5a.5.5 0 0 0 0-.814l-3.5-2.5z">
@@ -41,7 +41,7 @@
                     </svg>
                     Start
                 </button>
-                <button type="button" id="stopBtn" class="btn btn-primary" style="display:none">
+                <button type="button" id="stopBtn" class="btn btn-danger" style="display:none">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
                         class="bi bi-stop-btn" viewBox="0 0 16 16">
                         <path
@@ -136,7 +136,7 @@
                     $('#startBtn').hide();
                     $('#stopBtn').show();
                 } else {
-                    if($('.autoComplete').val().length>2) {
+                    if($('.autoComplete').val().length>1) {
                          $('#startBtn').removeClass('disabled');
                     } else $('#startBtn').addClass('disabled');
                     $('#startBtn').show();
@@ -146,17 +146,19 @@
             getTotalDurations() {
                 const result = [];
                 const cache = {};
+                const formatDate = (date)=>date.toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: '2-digit', day: '2-digit' });
                 this.tasks.forEach(task => {
                     if(task.name == '') return;
+                    task.day = formatDate(new Date(task.start));
+                    task.duration = (task.end ? task.end : Date.now()) - task.start;
                     let aggrTask = cache[task.name+task.day];
                     if(!aggrTask) {
                         cache[task.name+task.day] = task;
                         result.push(task);
                         aggrTask = task;
                         aggrTask.duration = 0;
-                        aggrTask.day = new Date(aggrTask.start).toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
                     }
-                    aggrTask.duration += (task.end ? task.end : Date.now()) - task.start;
+                    aggrTask.duration += task.duration;
                 });
                 
                 return result;
@@ -177,7 +179,7 @@
                     
                     html += `<tr>
                         <td><b>${task.day!=currentDay?task.day:''}</b></td>
-                        <td>${task.name}</td>
+                        <td><a href="#" onClick="$('.autoComplete').val('${task.name}');tm.start('${task.name}')" title="Click to start">${task.name}</a></td>
                         <td>${getYoutubeLikeToDisplay(task.duration)}</td>
                         <td>
                             <button onClick="tm.delete('${task.name}', '${task.day}')" type="button" class="btn btn-secondary">
@@ -213,6 +215,7 @@
         // register the events
         $('.autoComplete').autoComplete({
             resolver: 'custom',
+            minLength: 1,
             events: {
                 search: function (qry, callback) {
                     callback(tm.getAutocomplete(qry));
@@ -221,6 +224,7 @@
         });
 
         $('.autoComplete').keypress(evt => {
+            if(evt.key === 'Enter') tm.start($('.autoComplete').val());
             tm.setState();
         });
 
