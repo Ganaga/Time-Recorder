@@ -20,6 +20,9 @@
 
     <!-- include sweetalert for displaying dialog messages -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/sweetalert/2.1.2/sweetalert.min.js"></script>
+
+    <!-- https://raw.githubusercontent.com/matthiasanderer/icsFormatter-->
+    <script src="icsFormatter.js"></script>
     <title>Time recorder</title>
 </head>
 
@@ -27,7 +30,8 @@
     <div class="container" style="margin-top: 50px; margin-bottom: 50px;">
         <div class="row">
             <div class="col-sm" style="margin-bottom: 30px;">
-                <input placeholder="What are you doing?" class="form-control autoComplete" type="text" autocomplete="off">
+                <input placeholder="What are you doing?" class="form-control autoComplete" type="text"
+                    autocomplete="off">
             </div>
             <div class="col-sm">
                 <button type="button" id="startBtn" class="btn btn-success disabled">
@@ -65,6 +69,7 @@
                             <th scope="col">Day</th>
                             <th scope="col">Task</th>
                             <th scope="col">Duration</th>
+                            <th scope="col"></th>
                         </tr>
                     </thead>
                     <tbody id="tableBody"></tbody>
@@ -84,12 +89,12 @@
                 else this.tasks = [];
 
                 const currentTaskJson = window.localStorage.getItem('currentTask');
-                if (currentTaskJson) {
+                if (currentTaskJson && currentTaskJson!=='undefined') {
                     this.currentTask = JSON.parse(currentTaskJson);
                     $('.autoComplete').val(this.currentTask.name);
                     this.start(this.currentTask.name);;
                 }
-                
+
                 this.intervalId = -1;
                 this.setState();
                 this.drawTable();
@@ -99,18 +104,18 @@
                 let taskNames = {};
                 this.tasks.forEach(t => taskNames[t.name] = 1);
                 let results = [];
-                for(var i in taskNames) results.push(i);
+                for (var i in taskNames) results.push(i);
                 return results;
             }
 
             start(name) {
-                if(!name || name.trim().length == 0) {
+                if (!name || name.trim().length == 0) {
                     $('#error').html("You haven't specify what you are doing!");
-                    setTimeout(()=>$('#error').html(""),2000);
+                    setTimeout(() => $('#error').html(""), 2000);
                     return;
                 }
                 $('#error').html('');
-                if(this.currentTask) this.stop();
+                if (this.currentTask) this.stop();
                 this.currentTask = {
                     start: Date.now(),
                     end: undefined,
@@ -122,7 +127,7 @@
                 this.setState();
             }
             stop() {
-                if(this.currentTask) {
+                if (this.currentTask) {
                     this.currentTask.end = Date.now();
                     this.tasks.unshift(this.currentTask);
                     this.currentTask = undefined;
@@ -133,12 +138,12 @@
                 this.setState();
             }
             setState() {
-                if(this.currentTask) {
+                if (this.currentTask) {
                     $('#startBtn').hide();
                     $('#stopBtn').show();
                 } else {
-                    if($('.autoComplete').val().length>1) {
-                         $('#startBtn').removeClass('disabled');
+                    if ($('.autoComplete').val().length > 1) {
+                        $('#startBtn').removeClass('disabled');
                     } else $('#startBtn').addClass('disabled');
                     $('#startBtn').show();
                     $('#stopBtn').hide();
@@ -147,19 +152,19 @@
             getTotalDurations() {
                 const result = [];
                 const cache = {};
-                const formatDate = (date)=>date.toLocaleDateString(navigator.language, { weekday: 'long', year: 'numeric', month: '2-digit', day: '2-digit' });
+                const formatDate = (date) => date.toLocaleDateString(navigator.language, { weekday: 'long', year: 'numeric', month: '2-digit', day: '2-digit' });
                 this.tasks.forEach(task => {
-                    if(task.name == '') return;
+                    if (task.name == '') return;
                     task.day = formatDate(new Date(task.start));
                     task.duration = (task.end ? task.end : Date.now()) - task.start;
-                    if(task.duration > 1000*60*60*6) {
+                    if (task.duration > 1000 * 60 * 60 * 6) {
                         console.warn('Reduce task ' + task.name + ' to 6h');
-                        task.end = task.start + 1000*60*60*6;
-                        task.duration = 1000*60*60*6;
+                        task.end = task.start + 1000 * 60 * 60 * 6;
+                        task.duration = 1000 * 60 * 60 * 6;
                     }
-                    let aggrTask = cache[task.name+task.day];
-                    if(!aggrTask) {
-                        cache[task.name+task.day] = task;
+                    let aggrTask = cache[task.name + task.day];
+                    if (!aggrTask) {
+                        cache[task.name + task.day] = task;
                         result.push(task);
                         aggrTask = task;
                         aggrTask.allTasks = [task];
@@ -168,14 +173,13 @@
                         aggrTask.allTasks.push(task);
                     }
                 });
-                
+
                 return result;
             }
             displayCurrentTask() {
-                if(this.currentTask) 
-                {
-                    const duration = getYoutubeLikeToDisplay(Date.now()-this.currentTask.start); 
-                    const msg =  duration + ' ' + this.currentTask.name;
+                if (this.currentTask) {
+                    const duration = getYoutubeLikeToDisplay(Date.now() - this.currentTask.start);
+                    const msg = duration + ' ' + this.currentTask.name;
                     document.title = msg;
                     $('#currentTaskInfo').html(duration);
                 }
@@ -184,13 +188,19 @@
                 let html = '';
                 let currentDay = '';
                 this.getTotalDurations().forEach(task => {
-                    
+
                     html += `<tr>
-                        <td><b>${task.day!=currentDay?task.day:''}</b></td>
+                        <td><b>${task.day != currentDay ? task.day : ''}</b></td>
                         <td><a href="#" onClick="$('.autoComplete').val('${task.name}');tm.start('${task.name}')" title="Click to start">${task.name}</a></td>
-                        <td title="${this.getTaskDetails(task.name,task.day)}">${getYoutubeLikeToDisplay(task.duration)}</td>
+                        <td title="${this.getTaskDetails(task.name, task.day)}">${getYoutubeLikeToDisplay(task.duration)}</td>
                         <td>
-                            <button onClick="tm.delete('${task.name}', '${task.day}')" type="button" class="btn btn-secondary">
+                            <button title="Add to calendar" onClick="tm.addToCalendar('${task.name}', '${task.day}')" type="button" class="btn btn-secondary">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-calendar-plus" viewBox="0 0 16 16">
+                                <path d="M8 7a.5.5 0 0 1 .5.5V9H10a.5.5 0 0 1 0 1H8.5v1.5a.5.5 0 0 1-1 0V10H6a.5.5 0 0 1 0-1h1.5V7.5A.5.5 0 0 1 8 7z"/>
+                                <path d="M3.5 0a.5.5 0 0 1 .5.5V1h8V.5a.5.5 0 0 1 1 0V1h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h1V.5a.5.5 0 0 1 .5-.5zM1 4v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4H1z"/>
+                                </svg>
+                            </button>
+                            <button title="Delete task" onClick="tm.delete('${task.name}', '${task.day}')" type="button" class="btn btn-secondary">
                               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash" viewBox="0 0 16 16">
                               <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"></path>
                               <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"></path>
@@ -203,26 +213,34 @@
                 $('#tableBody').html(html);
             }
             getTaskDetails(name, day) {
-                const formatHour = (date)=>new Date(date).toLocaleTimeString(navigator.language, {hour: '2-digit', minute:'2-digit'});
+                const formatHour = (date) => new Date(date).toLocaleTimeString(navigator.language, { hour: '2-digit', minute: '2-digit' });
                 const task = this.getTask(name, day);
                 let details = '';
-                if(!task.allTasks) return task.name;
+                if (!task.allTasks) return task.name;
                 task.allTasks.forEach(t => {
                     details += formatHour(t.start) + ' - ' + formatHour(t.end) + '\n';
                 });
                 return details;
             }
+            addToCalendar(name, day) {
+                const task = this.getTask(name, day);
+
+                //addToCalendar(task);
+                var calEntry = icsFormatter();
+    	        calEntry.addEvent(task.name,this.getTaskDetails(name, day), 'Galigeo', new Date(task.start).toUTCString(), new Date(task.end).toUTCString());
+		        calEntry.download(task.name + ' ' + task.day + '.ics');
+            }
             getTask(name, day) {
                 const taskDurations = this.getTotalDurations();
-                for(let i in taskDurations) {
-                    if(taskDurations[i].name === name && taskDurations[i].day === day) return taskDurations[i];
+                for (let i in taskDurations) {
+                    if (taskDurations[i].name === name && taskDurations[i].day === day) return taskDurations[i];
                 };
                 return null;
             }
             delete(name, day) {
                 const newTasks = [];
                 this.tasks.forEach(task => {
-                    if(task.name !== name || task.day !== day) newTasks.push(task);
+                    if (task.name !== name || task.day !== day) newTasks.push(task);
                 });
                 this.tasks = newTasks;
                 this.save();
@@ -239,8 +257,8 @@
         };
 
         const tm = new TaskManager();
-        $('.toast').toast({delay: 2000});
-        
+        $('.toast').toast({ delay: 2000 });
+
         // register the events
         $('.autoComplete').autoComplete({
             resolver: 'custom',
@@ -253,7 +271,7 @@
         });
 
         $('.autoComplete').keypress(evt => {
-            if(evt.key === 'Enter') tm.start($('.autoComplete').val());
+            if (evt.key === 'Enter') tm.start($('.autoComplete').val());
             tm.setState();
         });
 
@@ -270,23 +288,80 @@
 
 
         function getYoutubeLikeToDisplay(millisec) {
-        var seconds = (millisec / 1000).toFixed(0);
-        var minutes = Math.floor(seconds / 60);
-        var hours = "";
-        if (minutes > 59) {
-            hours = Math.floor(minutes / 60);
-            hours = (hours >= 10) ? hours : "0" + hours;
-            minutes = minutes - (hours * 60);
-            minutes = (minutes >= 10) ? minutes : "0" + minutes;
+            var seconds = (millisec / 1000).toFixed(0);
+            var minutes = Math.floor(seconds / 60);
+            var hours = "";
+            if (minutes > 59) {
+                hours = Math.floor(minutes / 60);
+                hours = (hours >= 10) ? hours : "0" + hours;
+                minutes = minutes - (hours * 60);
+                minutes = (minutes >= 10) ? minutes : "0" + minutes;
+            }
+
+            seconds = Math.floor(seconds % 60);
+            seconds = (seconds >= 10) ? seconds : "0" + seconds;
+            if (hours != "") {
+                return hours + ":" + minutes + ":" + seconds;
+            }
+            return minutes + ":" + seconds;
         }
 
-        seconds = Math.floor(seconds % 60);
-        seconds = (seconds >= 10) ? seconds : "0" + seconds;
-        if (hours != "") {
-            return hours + ":" + minutes + ":" + seconds;
+        function addToCalendar(task) {
+            let icsContent = `
+            BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:icalendar-ruby
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+BEGIN:VTIMEZONE
+TZID:Europe/Paris
+BEGIN:DAYLIGHT
+DTSTART:${new Date(task.start).toUTCString()}
+TZOFFSETFROM:+0100
+TZOFFSETTO:+0200
+RRULE:FREQ=YEARLY;BYDAY=-1SU;BYMONTH=3
+TZNAME:CEST
+END:DAYLIGHT
+BEGIN:STANDARD
+DTSTART:${new Date(task.start).toUTCString()}
+TZOFFSETFROM:+0200
+TZOFFSETTO:+0100
+RRULE:FREQ=YEARLY;BYDAY=-1SU;BYMONTH=10
+TZNAME:CET
+END:STANDARD
+END:VTIMEZONE
+BEGIN:VEVENT
+DTSTAMP:20220315T075218Z
+UID:658e8d90-6293-4a4d-8824-4d8c73c12356
+DTSTART;TZID=Europe/Paris:20220323T121500
+DTEND;TZID=Europe/Paris:20220323T123000
+CLASS:PRIVATE
+DESCRIPTION:Créé par ${window.location.href}
+GEO:48.8223143;2.35701189999997
+LOCATION:16 Rue du Tage\, 75013 Paris
+PRIORITY:2
+SUMMARY:${task.name}
+BEGIN:VALARM
+TRIGGER:-PT2H
+END:VALARM
+END:VEVENT
+END:VCALENDAR
+`;
+            download(task.name+' '+task.day+'.ics', icsContent);
         }
-        return minutes + ":" + seconds;
-    }
+
+        function download(filename, text) {
+            var element = document.createElement('a');
+            element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+            element.setAttribute('download', filename);
+
+            element.style.display = 'none';
+            document.body.appendChild(element);
+
+            element.click();
+
+            document.body.removeChild(element);
+        }
 
     </script>
 </body>
