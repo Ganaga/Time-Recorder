@@ -162,11 +162,11 @@
                         cache[task.name+task.day] = task;
                         result.push(task);
                         aggrTask = task;
-                        aggrTask.duration = 0;
-                        aggrTask.allTasks = [];
+                        aggrTask.allTasks = [task];
+                    } else {
+                        aggrTask.duration += task.duration;
+                        aggrTask.allTasks.push(task);
                     }
-                    aggrTask.duration += task.duration;
-                    aggrTask.allTasks.push(task);
                 });
                 
                 return result;
