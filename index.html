@@ -86,7 +86,8 @@
                 const currentTaskJson = window.localStorage.getItem('currentTask');
                 if (currentTaskJson) {
                     this.currentTask = JSON.parse(currentTaskJson);
-                    $('.autocomplete').val(this.currentTask.name);
+                    $('.autoComplete').val(this.currentTask.name);
+                    this.start(this.currentTask.name);;
                 }
                 
                 this.intervalId = -1;
@@ -146,19 +147,26 @@
             getTotalDurations() {
                 const result = [];
                 const cache = {};
-                const formatDate = (date)=>date.toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: '2-digit', day: '2-digit' });
+                const formatDate = (date)=>date.toLocaleDateString(navigator.language, { weekday: 'long', year: 'numeric', month: '2-digit', day: '2-digit' });
                 this.tasks.forEach(task => {
                     if(task.name == '') return;
                     task.day = formatDate(new Date(task.start));
                     task.duration = (task.end ? task.end : Date.now()) - task.start;
+                    if(task.duration > 1000*60*60*6) {
+                        console.warn('Reduce task ' + task.name + ' to 6h');
+                        task.end = task.start + 1000*60*60*6;
+                        task.duration = 1000*60*60*6;
+                    }
                     let aggrTask = cache[task.name+task.day];
                     if(!aggrTask) {
                         cache[task.name+task.day] = task;
                         result.push(task);
                         aggrTask = task;
                         aggrTask.duration = 0;
+                        aggrTask.allTasks = [];
                     }
                     aggrTask.duration += task.duration;
+                    aggrTask.allTasks.push(task);
                 });
                 
                 return result;
@@ -180,7 +188,7 @@
                     html += `<tr>
                         <td><b>${task.day!=currentDay?task.day:''}</b></td>
                         <td><a href="#" onClick="$('.autoComplete').val('${task.name}');tm.start('${task.name}')" title="Click to start">${task.name}</a></td>
-                        <td>${getYoutubeLikeToDisplay(task.duration)}</td>
+                        <td title="${this.getTaskDetails(task.name,task.day)}">${getYoutubeLikeToDisplay(task.duration)}</td>
                         <td>
                             <button onClick="tm.delete('${task.name}', '${task.day}')" type="button" class="btn btn-secondary">
                               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash" viewBox="0 0 16 16">
@@ -194,6 +202,23 @@
                 });
                 $('#tableBody').html(html);
             }
+            getTaskDetails(name, day) {
+                const formatHour = (date)=>new Date(date).toLocaleTimeString(navigator.language, {hour: '2-digit', minute:'2-digit'});
+                const task = this.getTask(name, day);
+                let details = '';
+                if(!task.allTasks) return task.name;
+                task.allTasks.forEach(t => {
+                    details += formatHour(t.start) + ' - ' + formatHour(t.end) + '\n';
+                });
+                return details;
+            }
+            getTask(name, day) {
+                const taskDurations = this.getTotalDurations();
+                for(let i in taskDurations) {
+                    if(taskDurations[i].name === name && taskDurations[i].day === day) return taskDurations[i];
+                };
+                return null;
+            }
             delete(name, day) {
                 const newTasks = [];
                 this.tasks.forEach(task => {
@@ -204,8 +229,12 @@
                 this.drawTable();
             }
             save() {
+                this.tasks.forEach(task => {
+                    delete task.allTasks;
+                    delete task.duration;
+                });
                 window.localStorage.setItem('tasks', JSON.stringify(this.tasks));
-                window.localStorage.setItem('currenttask', JSON.stringify(this.currentTask));
+                window.localStorage.setItem('currentTask', JSON.stringify(this.currentTask));
             }
         };
 
