@@ -104,7 +104,11 @@
                 let taskNames = {};
                 this.tasks.forEach(t => taskNames[t.name] = 1);
                 let results = [];
-                for (var i in taskNames) results.push(i);
+                for (var i in taskNames) {
+                    if(i.toLowerCase().indexOf(qry.toLowerCase())>=0) {
+                        results.push(i);
+                    }
+                }
                 return results;
             }
 
@@ -164,13 +168,15 @@
                     }
                     let aggrTask = cache[task.name + task.day];
                     if (!aggrTask) {
-                        cache[task.name + task.day] = task;
-                        result.push(task);
-                        aggrTask = task;
+                        aggrTask = JSON.parse(JSON.stringify(task));
+                        cache[task.name + task.day] = aggrTask;
+                        result.push(aggrTask);
                         aggrTask.allTasks = [task];
                     } else {
                         aggrTask.duration += task.duration;
                         aggrTask.allTasks.push(task);
+                        aggrTask.start = Math.min(task.start, aggrTask.start);
+                        aggrTask.end = Math.min(task.end, aggrTask.end);
                     }
                 });
 
@@ -227,7 +233,11 @@
 
                 //addToCalendar(task);
                 var calEntry = icsFormatter();
-    	        calEntry.addEvent(task.name,this.getTaskDetails(name, day), 'Galigeo', new Date(task.start).toUTCString(), new Date(task.end).toUTCString());
+    	        calEntry.addEvent(task.name,
+                    this.getTaskDetails(name, day), 
+                    'Galigeo', 
+                    new Date(task.allTasks[0].start).toUTCString(), 
+                    new Date(task.allTasks[task.allTasks.length-1].end).toUTCString());
 		        calEntry.download(task.name + ' ' + task.day + '.ics');
             }
             getTask(name, day) {
